@@ -66,6 +66,8 @@
     }
     #input-form {
       display: flex;
+      align-items: center;
+      gap: 8px;
     }
     #question {
       flex: 1;
@@ -73,18 +75,29 @@
       border: 1px solid #ddd;
       border-radius: 5px;
     }
-    #send-btn {
-      margin-left: 10px;
-      padding: 10px 20px;
+    #send-btn, #mic-btn {
+      padding: 10px;
       background-color: #4CAF50;
       color: white;
       border: none;
       border-radius: 5px;
       cursor: pointer;
     }
-    #send-btn:hover {
+    #send-btn:hover, #mic-btn:hover {
       background-color: #45a049;
     }
+
+    /* Pulse animation */
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+
+    #mic-btn.listening {
+      animation: pulse 1.2s infinite;
+    }
+
     .chat-header {
       display: flex;
       align-items: center;
@@ -104,8 +117,13 @@
       <h2>Medical Chatbot</h2>
     </div>
     <div id="chat-display"></div>
+    
+    <!-- Updated Form with Mic Button -->
     <form id="input-form">
       <input type="text" id="question" placeholder="Type your question here..." autocomplete="off" required />
+      <button type="button" id="mic-btn" title="Voice Input">
+        <i class="fas fa-microphone"></i>
+      </button>
       <button type="submit" id="send-btn">Send</button>
     </form>
   </div>
@@ -116,14 +134,13 @@
       $("#input-form").on("submit", function(event) {
         event.preventDefault();
         const date = new Date();
-        const hour = date.getHours();
-        const minute = date.getMinutes();
-        const str_time = hour+":"+minute;
+        const hour = date.getHours().toString().padStart(2, '0');
+        const minute = date.getMinutes().toString().padStart(2, '0');
+        const str_time = hour + ":" + minute;
         var rawText = $("#question").val();
 
         if (!rawText) return;
 
-        // Display user message
         var userHtml = `
           <div class="chat-message user-message">
             ${rawText}
@@ -134,15 +151,13 @@
         $("#chat-display").append(userHtml);
         $("#chat-display").scrollTop($("#chat-display")[0].scrollHeight);
 
-        // Send to your Flask backend
         $.ajax({
           data: {
-            msg: rawText,	
+            msg: rawText,
           },
           type: "POST",
           url: "/get",
         }).done(function(data) {
-          // Display bot response
           var botHtml = `
             <div class="chat-message bot-message">
               ${data}
@@ -152,6 +167,44 @@
           $("#chat-display").scrollTop($("#chat-display")[0].scrollHeight);
         });
       });
+
+      // Voice recognition with silence stop
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'en-US';
+
+        const micBtn = document.getElementById('mic-btn');
+        const questionInput = document.getElementById('question');
+
+        micBtn.addEventListener('click', () => {
+          recognition.start();
+          micBtn.classList.add('listening');
+          console.log("🎤 Listening started...");
+        });
+
+        recognition.onresult = function(event) {
+          const transcript = event.results[0][0].transcript;
+          questionInput.value = transcript;
+          console.log("✅ Transcript:", transcript);
+          document.getElementById("input-form").requestSubmit();
+        };
+
+        recognition.onend = function() {
+          micBtn.classList.remove('listening');
+          console.log("🛑 Listening stopped (pause or done).");
+        };
+
+        recognition.onerror = function(event) {
+          micBtn.classList.remove('listening');
+          console.error("❌ Speech recognition error:", event.error);
+        };
+      } else {
+        alert("Speech Recognition is not supported in your browser.");
+      }
     });
   </script>
 </body>

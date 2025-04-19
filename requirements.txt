@@ -8,3 +8,9 @@ langchain-pinecone==0.2.5
 langchain-community==0.3.21
 langchain-groq==0.3.2
 langchain-experimental==0.3.4
+sounddevice==0.5.1
+langchain_openai
+openai-whisper
+torch
+torchaudio
+-e .
